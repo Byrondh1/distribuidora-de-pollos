@@ -258,6 +258,42 @@ export interface Database {
         Update: Partial<Database['public']['Tables']['pagos_credito']['Row']>;
         Relationships: [];
       };
+      despachos: {
+        Row: {
+          id: string;
+          company_id: string;
+          vendedor_id: string;
+          fecha: string;
+          estado: 'pendiente' | 'en_ruta' | 'entregado' | 'fallido';
+          notas: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database['public']['Tables']['despachos']['Row']> & {
+          company_id: string;
+          vendedor_id: string;
+        };
+        Update: Partial<Database['public']['Tables']['despachos']['Row']>;
+        Relationships: [];
+      };
+      despacho_items: {
+        Row: {
+          id: string;
+          despacho_id: string;
+          company_id: string;
+          venta_id: string;
+          estado: 'pendiente' | 'entregado' | 'fallido';
+          notas: string | null;
+          entregado_at: string | null;
+        };
+        Insert: Partial<Database['public']['Tables']['despacho_items']['Row']> & {
+          despacho_id: string;
+          company_id: string;
+          venta_id: string;
+        };
+        Update: Partial<Database['public']['Tables']['despacho_items']['Row']>;
+        Relationships: [];
+      };
       audit_logs: {
         Row: {
           id: number;
@@ -293,6 +329,65 @@ export interface Database {
           num_ventas: number;
         };
       };
+      reporte_ventas_diarias: {
+        Row: {
+          company_id: string;
+          fecha: string;
+          metodo_pago: string;
+          num_ventas: number;
+          total: number;
+          total_descuentos: number;
+          clientes_atendidos: number;
+        };
+      };
+      reporte_productos_top: {
+        Row: {
+          company_id: string;
+          producto_id: string;
+          sku: string;
+          nombre: string;
+          categoria: string | null;
+          unidad: string;
+          cantidad_total: number;
+          monto_total: number;
+          num_ventas: number;
+        };
+      };
+      reporte_clientes_top: {
+        Row: {
+          company_id: string;
+          cliente_id: string;
+          nombre: string;
+          telefono: string | null;
+          num_ventas: number;
+          monto_total: number;
+          ultima_compra: string;
+          total_credito: number;
+        };
+      };
+      reporte_inventario_critico: {
+        Row: {
+          company_id: string;
+          id: string;
+          sku: string;
+          nombre: string;
+          categoria: string | null;
+          unidad: string;
+          stock: number;
+          stock_minimo: number;
+          deficit: number;
+        };
+      };
+      reporte_cobranza_resumen: {
+        Row: {
+          company_id: string;
+          estado: string;
+          num_creditos: number;
+          saldo_total: number;
+          monto_original_total: number;
+          proximo_vencimiento: string | null;
+        };
+      };
     };
     Functions: {
       current_company_id: { Args: Record<string, never>; Returns: string | null };
@@ -310,6 +405,10 @@ export interface Database {
       abrir_caja: { Args: { p_monto_apertura?: number }; Returns: string };
       cerrar_caja: { Args: { p_monto_cierre: number; p_notas?: string }; Returns: void };
       marcar_creditos_vencidos: { Args: Record<string, never>; Returns: number };
+      marcar_despacho_item: {
+        Args: { p_item_id: string; p_estado: 'pendiente' | 'entregado' | 'fallido'; p_notas?: string };
+        Returns: void;
+      };
     };
     Enums: {
       user_role: 'admin' | 'vendedor';
@@ -318,6 +417,8 @@ export interface Database {
       venta_estado: 'borrador' | 'confirmada' | 'anulada';
       caja_estado: 'abierta' | 'cerrada';
       credito_estado: 'vigente' | 'pagado' | 'vencido';
+      despacho_estado: 'pendiente' | 'en_ruta' | 'entregado' | 'fallido';
+      despacho_item_estado: 'pendiente' | 'entregado' | 'fallido';
     };
     CompositeTypes: Record<string, never>;
   };

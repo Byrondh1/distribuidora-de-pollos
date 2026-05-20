@@ -162,6 +162,16 @@ export default function InventarioScreen() {
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
+            style={[styles.actionBtn, { backgroundColor: '#b45309', flex: 1 }]}
+            onPress={() => router.push('/(app)/despacho')}
+          >
+            <Text style={{ color: '#fff', fontWeight: '600', textAlign: 'center' }}>
+              Despacho
+            </Text>
+          </TouchableOpacity>
+        </View>
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          <TouchableOpacity
             style={[styles.actionBtn, { flex: 1, borderWidth: 1, borderColor: '#ddd' }]}
             onPress={async () => {
               await clearLocalSession();

@@ -46,5 +46,22 @@ export type CreditoEstado = (typeof CREDITO_ESTADO)[keyof typeof CREDITO_ESTADO]
 
 export const CREDITO_PLAZO_DIAS_DEFAULT = 30;
 
+export const DESPACHO_ESTADO = {
+  PENDIENTE: 'pendiente',
+  EN_RUTA: 'en_ruta',
+  ENTREGADO: 'entregado',
+  FALLIDO: 'fallido',
+} as const;
+
+export type DespachoEstado = (typeof DESPACHO_ESTADO)[keyof typeof DESPACHO_ESTADO];
+
+export const DESPACHO_ITEM_ESTADO = {
+  PENDIENTE: 'pendiente',
+  ENTREGADO: 'entregado',
+  FALLIDO: 'fallido',
+} as const;
+
+export type DespachoItemEstado = (typeof DESPACHO_ITEM_ESTADO)[keyof typeof DESPACHO_ITEM_ESTADO];
+
 export const PIN_LENGTH = 6;
 export const PIN_MAX_ATTEMPTS = 5;
