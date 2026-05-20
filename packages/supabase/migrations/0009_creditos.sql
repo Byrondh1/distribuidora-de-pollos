@@ -166,19 +166,23 @@ alter publication supabase_realtime add table public.creditos;
 alter table public.creditos      enable row level security;
 alter table public.pagos_credito enable row level security;
 
+drop policy if exists creditos_tenant_select on public.creditos;
 create policy creditos_tenant_select
   on public.creditos for select to authenticated
   using (company_id = public.current_company_id());
 
+drop policy if exists creditos_admin_write on public.creditos;
 create policy creditos_admin_write
   on public.creditos for all to authenticated
   using (company_id = public.current_company_id() and public.current_user_role() = 'admin')
   with check (company_id = public.current_company_id() and public.current_user_role() = 'admin');
 
+drop policy if exists pagos_credito_tenant_select on public.pagos_credito;
 create policy pagos_credito_tenant_select
   on public.pagos_credito for select to authenticated
   using (company_id = public.current_company_id());
 
+drop policy if exists pagos_credito_insert on public.pagos_credito;
 create policy pagos_credito_insert
   on public.pagos_credito for insert to authenticated
   with check (

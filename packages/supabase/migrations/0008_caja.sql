@@ -131,11 +131,13 @@ alter publication supabase_realtime add table public.cajas;
 -- RLS -----------------------------------------------------------------------
 alter table public.cajas enable row level security;
 
+drop policy if exists cajas_vendedor_own on public.cajas;
 create policy cajas_vendedor_own
   on public.cajas for all to authenticated
   using (company_id = public.current_company_id() and vendedor_id = auth.uid())
   with check (company_id = public.current_company_id() and vendedor_id = auth.uid());
 
+drop policy if exists cajas_admin_all on public.cajas;
 create policy cajas_admin_all
   on public.cajas for all to authenticated
   using (company_id = public.current_company_id() and public.current_user_role() = 'admin')

@@ -11,11 +11,13 @@ alter table public.audit_logs             enable row level security;
 -- =====================================================================
 -- companies: cada usuario ve solo su empresa.
 -- =====================================================================
+drop policy if exists companies_select_own on public.companies;
 create policy companies_select_own
   on public.companies for select
   to authenticated
   using (id = public.current_company_id());
 
+drop policy if exists companies_update_admin on public.companies;
 create policy companies_update_admin
   on public.companies for update
   to authenticated
@@ -25,6 +27,7 @@ create policy companies_update_admin
 -- =====================================================================
 -- profiles: el usuario ve su propio perfil + admin ve todos los del tenant.
 -- =====================================================================
+drop policy if exists profiles_select_self_or_admin on public.profiles;
 create policy profiles_select_self_or_admin
   on public.profiles for select
   to authenticated
@@ -33,6 +36,7 @@ create policy profiles_select_self_or_admin
     or (company_id = public.current_company_id() and public.current_user_role() = 'admin')
   );
 
+drop policy if exists profiles_update_self on public.profiles;
 create policy profiles_update_self
   on public.profiles for update
   to authenticated
@@ -44,6 +48,7 @@ create policy profiles_update_self
     and company_id is not distinct from (select company_id from public.profiles where id = auth.uid())
   );
 
+drop policy if exists profiles_admin_manage on public.profiles;
 create policy profiles_admin_manage
   on public.profiles for all
   to authenticated
@@ -53,11 +58,13 @@ create policy profiles_admin_manage
 -- =====================================================================
 -- productos
 -- =====================================================================
+drop policy if exists productos_tenant_select on public.productos;
 create policy productos_tenant_select
   on public.productos for select
   to authenticated
   using (company_id = public.current_company_id());
 
+drop policy if exists productos_admin_write on public.productos;
 create policy productos_admin_write
   on public.productos for all
   to authenticated
@@ -68,11 +75,13 @@ create policy productos_admin_write
 -- inventario: lectura para ambos roles; escritura directa solo admin.
 -- (Los vendedores cambian stock indirectamente vía movimientos_inventario.)
 -- =====================================================================
+drop policy if exists inventario_tenant_select on public.inventario;
 create policy inventario_tenant_select
   on public.inventario for select
   to authenticated
   using (company_id = public.current_company_id());
 
+drop policy if exists inventario_admin_write on public.inventario;
 create policy inventario_admin_write
   on public.inventario for all
   to authenticated
@@ -85,11 +94,13 @@ create policy inventario_admin_write
 --   - INSERT vendedor: solo 'salida' (ventas en campo).
 --   - INSERT admin: cualquier tipo (entrada, salida, ajuste).
 -- =====================================================================
+drop policy if exists movimientos_tenant_select on public.movimientos_inventario;
 create policy movimientos_tenant_select
   on public.movimientos_inventario for select
   to authenticated
   using (company_id = public.current_company_id());
 
+drop policy if exists movimientos_vendedor_insert on public.movimientos_inventario;
 create policy movimientos_vendedor_insert
   on public.movimientos_inventario for insert
   to authenticated
@@ -100,6 +111,7 @@ create policy movimientos_vendedor_insert
     and usuario_id = auth.uid()
   );
 
+drop policy if exists movimientos_admin_insert on public.movimientos_inventario;
 create policy movimientos_admin_insert
   on public.movimientos_inventario for insert
   to authenticated
@@ -112,6 +124,7 @@ create policy movimientos_admin_insert
 -- audit_logs: solo lectura para admin del tenant. INSERT via trigger
 -- SECURITY DEFINER (no se necesitan policies de insert para usuarios).
 -- =====================================================================
+drop policy if exists audit_logs_admin_select on public.audit_logs;
 create policy audit_logs_admin_select
   on public.audit_logs for select
   to authenticated

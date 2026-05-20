@@ -194,11 +194,13 @@ alter table public.ventas      enable row level security;
 alter table public.venta_items enable row level security;
 
 -- ventas: admin ve todas del tenant; vendedor ve solo las suyas.
+drop policy if exists ventas_admin_all on public.ventas;
 create policy ventas_admin_all
   on public.ventas for all to authenticated
   using (company_id = public.current_company_id() and public.current_user_role() = 'admin')
   with check (company_id = public.current_company_id() and public.current_user_role() = 'admin');
 
+drop policy if exists ventas_vendedor_own on public.ventas;
 create policy ventas_vendedor_own
   on public.ventas for all to authenticated
   using (company_id = public.current_company_id() and vendedor_id = auth.uid())
@@ -209,11 +211,13 @@ create policy ventas_vendedor_own
   );
 
 -- venta_items: hereda acceso de la venta padre.
+drop policy if exists venta_items_admin_all on public.venta_items;
 create policy venta_items_admin_all
   on public.venta_items for all to authenticated
   using (company_id = public.current_company_id() and public.current_user_role() = 'admin')
   with check (company_id = public.current_company_id() and public.current_user_role() = 'admin');
 
+drop policy if exists venta_items_vendedor_own on public.venta_items;
 create policy venta_items_vendedor_own
   on public.venta_items for all to authenticated
   using (

@@ -84,23 +84,28 @@ alter publication supabase_realtime add table public.clientes;
 alter table public.clientes       enable row level security;
 alter table public.precios_cliente enable row level security;
 
+drop policy if exists clientes_tenant_select on public.clientes;
 create policy clientes_tenant_select
   on public.clientes for select to authenticated
   using (company_id = public.current_company_id());
 
+drop policy if exists clientes_admin_write on public.clientes;
 create policy clientes_admin_write
   on public.clientes for all to authenticated
   using (company_id = public.current_company_id() and public.current_user_role() = 'admin')
   with check (company_id = public.current_company_id() and public.current_user_role() = 'admin');
 
+drop policy if exists clientes_vendedor_insert on public.clientes;
 create policy clientes_vendedor_insert
   on public.clientes for insert to authenticated
   with check (company_id = public.current_company_id() and public.current_user_role() = 'vendedor');
 
+drop policy if exists precios_cliente_tenant_select on public.precios_cliente;
 create policy precios_cliente_tenant_select
   on public.precios_cliente for select to authenticated
   using (company_id = public.current_company_id());
 
+drop policy if exists precios_cliente_admin_write on public.precios_cliente;
 create policy precios_cliente_admin_write
   on public.precios_cliente for all to authenticated
   using (company_id = public.current_company_id() and public.current_user_role() = 'admin')

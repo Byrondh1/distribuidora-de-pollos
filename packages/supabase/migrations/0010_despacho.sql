@@ -123,25 +123,30 @@ alter publication supabase_realtime add table public.despacho_items;
 alter table public.despachos      enable row level security;
 alter table public.despacho_items enable row level security;
 
+drop policy if exists despachos_vendedor_own on public.despachos;
 create policy despachos_vendedor_own
   on public.despachos for all to authenticated
   using (company_id = public.current_company_id() and vendedor_id = auth.uid())
   with check (company_id = public.current_company_id() and vendedor_id = auth.uid());
 
+drop policy if exists despachos_admin_all on public.despachos;
 create policy despachos_admin_all
   on public.despachos for all to authenticated
   using (company_id = public.current_company_id() and public.current_user_role() = 'admin')
   with check (company_id = public.current_company_id() and public.current_user_role() = 'admin');
 
+drop policy if exists despacho_items_tenant_select on public.despacho_items;
 create policy despacho_items_tenant_select
   on public.despacho_items for select to authenticated
   using (company_id = public.current_company_id());
 
+drop policy if exists despacho_items_admin_write on public.despacho_items;
 create policy despacho_items_admin_write
   on public.despacho_items for all to authenticated
   using (company_id = public.current_company_id() and public.current_user_role() = 'admin')
   with check (company_id = public.current_company_id() and public.current_user_role() = 'admin');
 
+drop policy if exists despacho_items_vendedor_select on public.despacho_items;
 create policy despacho_items_vendedor_select
   on public.despacho_items for select to authenticated
   using (
