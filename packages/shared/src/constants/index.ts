@@ -29,5 +29,22 @@ export const VENTA_ESTADO = {
 
 export type VentaEstado = (typeof VENTA_ESTADO)[keyof typeof VENTA_ESTADO];
 
+export const CAJA_ESTADO = {
+  ABIERTA: 'abierta',
+  CERRADA: 'cerrada',
+} as const;
+
+export type CajaEstado = (typeof CAJA_ESTADO)[keyof typeof CAJA_ESTADO];
+
+export const CREDITO_ESTADO = {
+  VIGENTE: 'vigente',
+  PAGADO: 'pagado',
+  VENCIDO: 'vencido',
+} as const;
+
+export type CreditoEstado = (typeof CREDITO_ESTADO)[keyof typeof CREDITO_ESTADO];
+
+export const CREDITO_PLAZO_DIAS_DEFAULT = 30;
+
 export const PIN_LENGTH = 6;
 export const PIN_MAX_ATTEMPTS = 5;

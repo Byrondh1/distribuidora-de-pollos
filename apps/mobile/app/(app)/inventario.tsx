@@ -133,24 +133,44 @@ export default function InventarioScreen() {
         )}
         ListEmptyComponent={<Text style={styles.empty}>Sin productos</Text>}
       />
-      <View style={{ flexDirection: 'row', gap: 8, padding: 8 }}>
-        <TouchableOpacity
-          style={[styles.actionBtn, { backgroundColor: '#2563eb', flex: 2 }]}
-          onPress={() => router.push('/(app)/nueva-venta')}
-        >
-          <Text style={{ color: '#fff', fontWeight: '600', textAlign: 'center' }}>
-            Nueva venta
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.actionBtn, { flex: 1, borderWidth: 1, borderColor: '#ddd' }]}
-          onPress={async () => {
-            await clearLocalSession();
-            router.replace('/(auth)/login');
-          }}
-        >
-          <Text style={{ textAlign: 'center', color: '#666' }}>Salir</Text>
-        </TouchableOpacity>
+      <View style={{ gap: 8, padding: 8 }}>
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          <TouchableOpacity
+            style={[styles.actionBtn, { backgroundColor: '#2563eb', flex: 1 }]}
+            onPress={() => router.push('/(app)/nueva-venta')}
+          >
+            <Text style={{ color: '#fff', fontWeight: '600', textAlign: 'center' }}>
+              Nueva venta
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.actionBtn, { backgroundColor: '#0f766e', flex: 1 }]}
+            onPress={() => router.push('/(app)/caja')}
+          >
+            <Text style={{ color: '#fff', fontWeight: '600', textAlign: 'center' }}>
+              Mi caja
+            </Text>
+          </TouchableOpacity>
+        </View>
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          <TouchableOpacity
+            style={[styles.actionBtn, { backgroundColor: '#7c3aed', flex: 1 }]}
+            onPress={() => router.push('/(app)/cobranza')}
+          >
+            <Text style={{ color: '#fff', fontWeight: '600', textAlign: 'center' }}>
+              Cobranza
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.actionBtn, { flex: 1, borderWidth: 1, borderColor: '#ddd' }]}
+            onPress={async () => {
+              await clearLocalSession();
+              router.replace('/(auth)/login');
+            }}
+          >
+            <Text style={{ textAlign: 'center', color: '#666' }}>Salir</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </View>
   );

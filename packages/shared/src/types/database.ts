@@ -193,6 +193,71 @@ export interface Database {
         Update: Partial<Database['public']['Tables']['venta_items']['Row']>;
         Relationships: [];
       };
+      cajas: {
+        Row: {
+          id: string;
+          company_id: string;
+          vendedor_id: string;
+          fecha: string;
+          monto_apertura: number;
+          monto_cierre: number | null;
+          estado: 'abierta' | 'cerrada';
+          notas_cierre: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database['public']['Tables']['cajas']['Row']> & {
+          company_id: string;
+          vendedor_id: string;
+        };
+        Update: Partial<Database['public']['Tables']['cajas']['Row']>;
+        Relationships: [];
+      };
+      creditos: {
+        Row: {
+          id: string;
+          company_id: string;
+          cliente_id: string;
+          venta_id: string;
+          monto_original: number;
+          saldo_pendiente: number;
+          fecha_emision: string;
+          fecha_vencimiento: string | null;
+          estado: 'vigente' | 'pagado' | 'vencido';
+          notas: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database['public']['Tables']['creditos']['Row']> & {
+          company_id: string;
+          cliente_id: string;
+          venta_id: string;
+          monto_original: number;
+          saldo_pendiente: number;
+        };
+        Update: Partial<Database['public']['Tables']['creditos']['Row']>;
+        Relationships: [];
+      };
+      pagos_credito: {
+        Row: {
+          id: string;
+          credito_id: string;
+          company_id: string;
+          monto: number;
+          fecha: string;
+          metodo_pago: 'efectivo' | 'transferencia' | 'credito';
+          notas: string | null;
+          usuario_id: string | null;
+          created_at: string;
+        };
+        Insert: Partial<Database['public']['Tables']['pagos_credito']['Row']> & {
+          credito_id: string;
+          company_id: string;
+          monto: number;
+        };
+        Update: Partial<Database['public']['Tables']['pagos_credito']['Row']>;
+        Relationships: [];
+      };
       audit_logs: {
         Row: {
           id: number;
@@ -210,7 +275,25 @@ export interface Database {
         Relationships: [];
       };
     };
-    Views: Record<string, never>;
+    Views: {
+      caja_resumen: {
+        Row: {
+          caja_id: string;
+          company_id: string;
+          vendedor_id: string;
+          fecha: string;
+          monto_apertura: number;
+          monto_cierre: number | null;
+          estado: 'abierta' | 'cerrada';
+          notas_cierre: string | null;
+          total_efectivo: number;
+          total_transferencia: number;
+          total_credito: number;
+          total_ventas: number;
+          num_ventas: number;
+        };
+      };
+    };
     Functions: {
       current_company_id: { Args: Record<string, never>; Returns: string | null };
       current_user_role: { Args: Record<string, never>; Returns: string | null };
@@ -224,12 +307,17 @@ export interface Database {
       };
       confirmar_venta: { Args: { p_venta_id: string }; Returns: void };
       anular_venta: { Args: { p_venta_id: string }; Returns: void };
+      abrir_caja: { Args: { p_monto_apertura?: number }; Returns: string };
+      cerrar_caja: { Args: { p_monto_cierre: number; p_notas?: string }; Returns: void };
+      marcar_creditos_vencidos: { Args: Record<string, never>; Returns: number };
     };
     Enums: {
       user_role: 'admin' | 'vendedor';
       movimiento_tipo: 'entrada' | 'salida' | 'ajuste';
       metodo_pago: 'efectivo' | 'transferencia' | 'credito';
       venta_estado: 'borrador' | 'confirmada' | 'anulada';
+      caja_estado: 'abierta' | 'cerrada';
+      credito_estado: 'vigente' | 'pagado' | 'vencido';
     };
     CompositeTypes: Record<string, never>;
   };
