@@ -1,0 +1,17 @@
+{
+  "name": "@distribuapp/supabase",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "start": "supabase start",
+    "stop": "supabase stop",
+    "status": "supabase status",
+    "reset": "supabase db reset",
+    "migrate": "supabase db push",
+    "seed": "psql \"$DATABASE_URL\" -f seed.sql",
+    "diff": "supabase db diff"
+  },
+  "devDependencies": {
+    "supabase": "^1.226.4"
+  }
+}

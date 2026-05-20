@@ -1,0 +1,51 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+.next/
+out/
+dist/
+build/
+.turbo/
+.expo/
+.expo-shared/
+web-build/
+
+# Env
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Supabase local
+packages/supabase/.branches/
+packages/supabase/.temp/
+
+# TypeScript
+*.tsbuildinfo
+
+# Native
+ios/
+android/
+*.keystore
+
+# Misc
+coverage/
+.cache/

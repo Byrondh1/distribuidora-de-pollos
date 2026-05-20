@@ -1,0 +1,28 @@
+{
+  "name": "distribuapp",
+  "version": "0.1.0",
+  "private": true,
+  "description": "SaaS multi-tenant de gestión para distribuidoras",
+  "packageManager": "pnpm@9.12.0",
+  "engines": {
+    "node": ">=20.11.0"
+  },
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "format": "prettier --write \"**/*.{ts,tsx,md,json}\"",
+    "supabase:start": "pnpm --filter @distribuapp/supabase start",
+    "supabase:stop": "pnpm --filter @distribuapp/supabase stop",
+    "supabase:reset": "pnpm --filter @distribuapp/supabase reset",
+    "supabase:migrate": "pnpm --filter @distribuapp/supabase migrate",
+    "supabase:seed": "pnpm --filter @distribuapp/supabase seed",
+    "db:types": "pnpm --filter @distribuapp/shared gen:types"
+  },
+  "devDependencies": {
+    "turbo": "^2.3.3",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.2"
+  }
+}

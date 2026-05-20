@@ -1,0 +1,35 @@
+{
+  "expo": {
+    "name": "DistribuApp",
+    "slug": "distribuapp",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "distribuapp",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.distribuapp.app"
+    },
+    "android": {
+      "package": "com.distribuapp.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#ffffff"
+      }
+    },
+    "web": {
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
