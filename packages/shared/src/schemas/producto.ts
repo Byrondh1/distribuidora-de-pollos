@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { MOVIMIENTO_TIPOS } from '../constants/index.js';
+import { MOVIMIENTO_TIPOS } from '../constants/index';
 
 export const productoCreateSchema = z.object({
   sku: z.string().min(1).max(40),

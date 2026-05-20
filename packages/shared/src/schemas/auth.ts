@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { PIN_LENGTH } from '../constants/index.js';
+import { PIN_LENGTH } from '../constants/index';
 
 export const loginSchema = z.object({
   email: z.string().email('Email inválido'),

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { METODO_PAGO } from '../constants/index.js';
+import { METODO_PAGO } from '../constants/index';
 
 export const pagoCreditorSchema = z.object({
   credito_id: z.string().uuid(),
