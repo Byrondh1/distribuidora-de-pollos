@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Button,
   FlatList,
   RefreshControl,
   StyleSheet,
   Text,
   TextInput,
+  TouchableOpacity,
   View,
 } from 'react-native';
 import { router } from 'expo-router';
@@ -133,13 +133,25 @@ export default function InventarioScreen() {
         )}
         ListEmptyComponent={<Text style={styles.empty}>Sin productos</Text>}
       />
-      <Button
-        title="Cerrar sesión"
-        onPress={async () => {
-          await clearLocalSession();
-          router.replace('/(auth)/login');
-        }}
-      />
+      <View style={{ flexDirection: 'row', gap: 8, padding: 8 }}>
+        <TouchableOpacity
+          style={[styles.actionBtn, { backgroundColor: '#2563eb', flex: 2 }]}
+          onPress={() => router.push('/(app)/nueva-venta')}
+        >
+          <Text style={{ color: '#fff', fontWeight: '600', textAlign: 'center' }}>
+            Nueva venta
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.actionBtn, { flex: 1, borderWidth: 1, borderColor: '#ddd' }]}
+          onPress={async () => {
+            await clearLocalSession();
+            router.replace('/(auth)/login');
+          }}
+        >
+          <Text style={{ textAlign: 'center', color: '#666' }}>Salir</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -165,4 +177,5 @@ const styles = StyleSheet.create({
   stock: { fontSize: 16, fontWeight: '600' },
   price: { fontSize: 12, color: '#777', marginTop: 2 },
   empty: { textAlign: 'center', color: '#999', marginTop: 32 },
+  actionBtn: { paddingVertical: 12, borderRadius: 8 },
 });
