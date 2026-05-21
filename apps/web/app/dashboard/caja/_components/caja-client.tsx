@@ -33,10 +33,10 @@ export function CajaClient({ rows, fecha }: { rows: CajaRow[]; fecha: string }) 
   const cajasAbiertas      = rows.filter((r) => r.estado === 'abierta').length;
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Caja del día</h1>
+          <h1 className="text-xl font-bold sm:text-2xl">Caja del día</h1>
           <p className="text-sm text-muted-foreground">{fecha} · {cajasAbiertas} cajas abiertas</p>
         </div>
         <Button variant="outline" onClick={() => router.refresh()}>Actualizar</Button>

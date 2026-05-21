@@ -1,10 +1,13 @@
 import { createClient } from '@/lib/supabase/server';
+import { getUserContext } from '@/lib/auth/role';
 import { InventarioClient, type InventarioRow } from './_components/inventario-client';
 
 export const dynamic = 'force-dynamic';
 
 export default async function InventarioPage() {
   const supabase = await createClient();
+  const ctx = await getUserContext();
+  const role = ctx?.role ?? 'vendedor';
 
   const { data, error } = await supabase
     .from('productos')
@@ -37,5 +40,5 @@ export default async function InventarioPage() {
     };
   });
 
-  return <InventarioClient initialRows={rows} />;
+  return <InventarioClient initialRows={rows} role={role} />;
 }

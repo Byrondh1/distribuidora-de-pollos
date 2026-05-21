@@ -52,10 +52,10 @@ export function CobranzaClient({ initialRows }: { initialRows: CreditoRow[] }) {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Cobranza</h1>
+          <h1 className="text-xl font-bold sm:text-2xl">Cobranza</h1>
           <p className="text-sm text-muted-foreground">
             Pendiente: {formatCurrency(totalPendiente)} · {vencidos} vencidos
           </p>
@@ -70,7 +70,72 @@ export function CobranzaClient({ initialRows }: { initialRows: CreditoRow[] }) {
         onChange={(e) => setQuery(e.target.value)}
         className="max-w-md"
       />
-      <div className="overflow-hidden rounded-lg border">
+
+      {/* Lista móvil */}
+      <ul className="space-y-2 md:hidden">
+        {filtered.map((r) => {
+          const diasRestantes = r.fecha_vencimiento
+            ? Math.ceil(
+                (new Date(r.fecha_vencimiento).getTime() - Date.now()) / (1000 * 60 * 60 * 24),
+              )
+            : null;
+          return (
+            <li key={r.id} className="rounded-lg border p-3">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="font-medium">{r.clientes?.nombre ?? '—'}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {r.clientes?.telefono ?? '—'} · emisión {r.fecha_emision}
+                  </div>
+                  {r.fecha_vencimiento && (
+                    <div className="text-xs">
+                      <span
+                        className={
+                          diasRestantes !== null && diasRestantes <= 0
+                            ? 'text-destructive'
+                            : 'text-muted-foreground'
+                        }
+                      >
+                        Vence {r.fecha_vencimiento}
+                        {diasRestantes !== null &&
+                          ` (${diasRestantes > 0 ? `${diasRestantes}d` : 'vencido'})`}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                <div className="text-right">
+                  <div className="font-semibold">
+                    {formatCurrency(Number(r.saldo_pendiente))}
+                  </div>
+                  <span
+                    className={`mt-1 inline-block rounded-full px-2 py-0.5 text-xs font-medium ${ESTADO_STYLES[r.estado] ?? ''}`}
+                  >
+                    {r.estado}
+                  </span>
+                </div>
+              </div>
+              {r.estado !== 'pagado' && (
+                <div className="mt-3 flex justify-end">
+                  <RegistrarPagoDialog
+                    creditoId={r.id}
+                    clienteNombre={r.clientes?.nombre ?? '—'}
+                    saldoPendiente={Number(r.saldo_pendiente)}
+                    onPagoRegistrado={(nuevoSaldo) => handlePagoAplicado(r.id, nuevoSaldo)}
+                  />
+                </div>
+              )}
+            </li>
+          );
+        })}
+        {filtered.length === 0 && (
+          <li className="rounded-lg border px-4 py-8 text-center text-sm text-muted-foreground">
+            Sin créditos pendientes
+          </li>
+        )}
+      </ul>
+
+      <div className="hidden overflow-hidden rounded-lg border md:block">
+        <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-muted/50 text-left">
             <tr>
@@ -149,6 +214,7 @@ export function CobranzaClient({ initialRows }: { initialRows: CreditoRow[] }) {
             )}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );

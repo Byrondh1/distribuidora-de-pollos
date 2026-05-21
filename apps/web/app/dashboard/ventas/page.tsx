@@ -1,10 +1,13 @@
 import { createClient } from '@/lib/supabase/server';
+import { getUserContext } from '@/lib/auth/role';
 import { VentasClient } from './_components/ventas-client';
 
 export const dynamic = 'force-dynamic';
 
 export default async function VentasPage() {
   const supabase = await createClient();
+  const ctx = await getUserContext();
+  const role = ctx?.role ?? 'vendedor';
   const { data, error } = await supabase
     .from('ventas')
     .select(`
@@ -24,5 +27,5 @@ export default async function VentasPage() {
     );
   }
 
-  return <VentasClient initialRows={data ?? []} />;
+  return <VentasClient initialRows={data ?? []} role={role} />;
 }

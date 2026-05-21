@@ -57,18 +57,21 @@ const ESTADO_DESPACHO: Record<string, string> = {
 };
 
 export function DespachoClient({
+  role,
   initialDespachos,
   ventasSinDespacho,
   vendedores,
   productos,
   fecha,
 }: {
+  role: 'admin' | 'vendedor';
   initialDespachos: Despacho[];
   ventasSinDespacho: VentaSinDespacho[];
   vendedores: Vendedor[];
   productos: Producto[];
   fecha: string;
 }) {
+  const canCreate = role === 'admin';
   const router = useRouter();
   const supabase = createClient();
   const [despachos, setDespachos] = useState(initialDespachos);
@@ -197,10 +200,10 @@ export function DespachoClient({
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Despacho</h1>
+          <h1 className="text-xl font-bold sm:text-2xl">Despacho</h1>
           <p className="text-sm text-muted-foreground">
             {fecha} · {despachos.length} rutas · {ventasSinDespacho.length} ventas sin asignar
           </p>
@@ -209,7 +212,7 @@ export function DespachoClient({
           <Button variant="outline" onClick={() => router.refresh()}>
             Actualizar
           </Button>
-          <Dialog
+          {canCreate && <Dialog
             open={openNuevo}
             onOpenChange={(o) => {
               setOpenNuevo(o);
@@ -372,7 +375,7 @@ export function DespachoClient({
                 </Button>
               </DialogFooter>
             </DialogContent>
-          </Dialog>
+          </Dialog>}
         </div>
       </div>
 
@@ -411,8 +414,11 @@ export function DespachoClient({
                 {d.despacho_items.map((item) => {
                   const esVenta = !!item.ventas;
                   return (
-                    <div key={item.id} className="flex items-center justify-between px-4 py-3">
-                      <div>
+                    <div
+                      key={item.id}
+                      className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+                    >
+                      <div className="min-w-0">
                         <div className="font-medium">
                           {esVenta
                             ? item.ventas?.clientes?.nombre ?? 'Sin cliente'

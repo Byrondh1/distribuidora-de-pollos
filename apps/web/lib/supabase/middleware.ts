@@ -41,17 +41,19 @@ export async function updateSession(request: NextRequest) {
 
   if (user && isAuthPage) {
     const url = request.nextUrl.clone();
-    url.pathname = '/dashboard/inventario';
+    const role = (user.app_metadata?.role as string | undefined) ?? null;
+    url.pathname = role === 'vendedor' ? '/dashboard/ventas/nueva' : '/dashboard/inventario';
     return NextResponse.redirect(url);
   }
 
-  // Restringir dashboard a admins (los vendedores usan la app móvil).
+  // Rutas restringidas a admin.
   if (user && path.startsWith('/dashboard')) {
     const role = (user.app_metadata?.role as string | undefined) ?? null;
-    if (role !== 'admin') {
+    const adminOnly =
+      path.startsWith('/dashboard/reportes') || path.startsWith('/dashboard/clientes');
+    if (adminOnly && role !== 'admin') {
       const url = request.nextUrl.clone();
-      url.pathname = '/login';
-      url.searchParams.set('error', 'solo-admin');
+      url.pathname = '/dashboard/ventas';
       return NextResponse.redirect(url);
     }
   }

@@ -31,10 +31,10 @@ export function ClientesClient({ initialRows }: { initialRows: ClienteRow[] }) {
   );
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Clientes</h1>
+          <h1 className="text-xl font-bold sm:text-2xl">Clientes</h1>
           <p className="text-sm text-muted-foreground">{rows.length} clientes registrados</p>
         </div>
         <NuevoClienteDialog onCreated={() => router.refresh()} />
@@ -45,7 +45,43 @@ export function ClientesClient({ initialRows }: { initialRows: ClienteRow[] }) {
         onChange={(e) => setQuery(e.target.value)}
         className="max-w-md"
       />
-      <div className="overflow-hidden rounded-lg border">
+
+      {/* Lista móvil */}
+      <ul className="space-y-2 md:hidden">
+        {filtered.map((r) => (
+          <li key={r.id} className="rounded-lg border p-3">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <div className="font-medium">{r.nombre}</div>
+                <div className="text-xs text-muted-foreground">
+                  {r.ruc ?? 'sin RUC'} · {r.telefono ?? 'sin teléfono'}
+                </div>
+              </div>
+              <span
+                className={`rounded-full px-2 py-0.5 text-xs font-medium ${r.activo ? 'bg-green-100 text-green-700' : 'bg-muted text-muted-foreground'}`}
+              >
+                {r.activo ? 'activo' : 'inactivo'}
+              </span>
+            </div>
+            <div className="mt-2 flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">
+                {r.limite_credito > 0
+                  ? `Crédito: S/ ${Number(r.limite_credito).toFixed(2)}`
+                  : 'Sin crédito'}
+              </span>
+              <PreciosClienteDialog clienteId={r.id} clienteNombre={r.nombre} />
+            </div>
+          </li>
+        ))}
+        {filtered.length === 0 && (
+          <li className="rounded-lg border px-4 py-8 text-center text-sm text-muted-foreground">
+            Sin resultados
+          </li>
+        )}
+      </ul>
+
+      <div className="hidden overflow-hidden rounded-lg border md:block">
+        <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-muted/50 text-left">
             <tr>
@@ -91,6 +127,7 @@ export function ClientesClient({ initialRows }: { initialRows: ClienteRow[] }) {
             )}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );

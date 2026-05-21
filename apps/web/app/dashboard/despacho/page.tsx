@@ -1,10 +1,13 @@
 import { createClient } from '@/lib/supabase/server';
+import { getUserContext } from '@/lib/auth/role';
 import { DespachoClient } from './_components/despacho-client';
 
 export const dynamic = 'force-dynamic';
 
 export default async function DespachoPage() {
   const supabase = await createClient();
+  const ctx = await getUserContext();
+  const role = ctx?.role ?? 'vendedor';
   const hoy = new Date().toISOString().slice(0, 10);
 
   const [
@@ -55,6 +58,7 @@ export default async function DespachoPage() {
 
   return (
     <DespachoClient
+      role={role}
       initialDespachos={despachos ?? []}
       ventasSinDespacho={ventasSinDespacho ?? []}
       vendedores={vendedores ?? []}

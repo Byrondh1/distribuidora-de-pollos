@@ -44,9 +44,9 @@ export default async function ReportesPage() {
   const stockCritico = (inventarioCritico ?? []).length;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 sm:space-y-8">
       <div>
-        <h1 className="text-2xl font-bold">Reportes</h1>
+        <h1 className="text-xl font-bold sm:text-2xl">Reportes</h1>
         <p className="text-sm text-muted-foreground">Últimos 30 días · hasta {hoy}</p>
       </div>
 
