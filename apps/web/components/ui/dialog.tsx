@@ -52,6 +52,13 @@ export const DialogHeader = ({ className, ...props }: React.HTMLAttributes<HTMLD
   <div className={cn('mb-4 flex flex-col space-y-1.5', className)} {...props} />
 );
 
+export const DialogFooter = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
+  <div
+    className={cn('mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end', className)}
+    {...props}
+  />
+);
+
 export const DialogTitle = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Title>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Title>
