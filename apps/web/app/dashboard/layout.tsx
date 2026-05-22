@@ -22,6 +22,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   return (
     <NavShell
       role={role}
+      userId={user.id}
       userLabel={profile?.full_name ?? user.email ?? '—'}
       companyLabel={profile?.companies?.nombre ?? '—'}
     >
