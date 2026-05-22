@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 export default async function NuevaVentaPage() {
   const supabase = await createClient();
 
-  const [{ data: productos }, { data: clientes }] = await Promise.all([
+  const [{ data: productos }, { data: clientes }, { data: top }] = await Promise.all([
     supabase
       .from('productos')
       .select(
@@ -14,11 +14,8 @@ export default async function NuevaVentaPage() {
       )
       .eq('activo', true)
       .order('nombre'),
-    supabase
-      .from('clientes')
-      .select('id, nombre')
-      .eq('activo', true)
-      .order('nombre'),
+    supabase.from('clientes').select('id, nombre').eq('activo', true).order('nombre'),
+    supabase.rpc('productos_mas_vendidos' as any, { p_limit: 8, p_dias: 60 } as any),
   ]);
 
   const productosOpt: ProductoOpt[] = ((productos ?? []) as any[]).map((p) => {
@@ -35,10 +32,23 @@ export default async function NuevaVentaPage() {
     };
   });
 
+  const topIds = ((top ?? []) as any[])
+    .map((r) => r.producto_id as string)
+    .filter(Boolean);
+  const topProductosOpt: ProductoOpt[] = topIds
+    .map((id) => productosOpt.find((p) => p.id === id))
+    .filter((p): p is ProductoOpt => Boolean(p));
+
   const clientesOpt: ClienteOpt[] = ((clientes ?? []) as any[]).map((c) => ({
     id: c.id,
     nombre: c.nombre,
   }));
 
-  return <NuevaVentaClient productos={productosOpt} clientes={clientesOpt} />;
+  return (
+    <NuevaVentaClient
+      productos={productosOpt}
+      topProductos={topProductosOpt}
+      clientes={clientesOpt}
+    />
+  );
 }

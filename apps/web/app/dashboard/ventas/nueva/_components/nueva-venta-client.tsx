@@ -43,9 +43,11 @@ const METODOS: { value: Metodo; label: string }[] = [
 
 export function NuevaVentaClient({
   productos,
+  topProductos,
   clientes,
 }: {
   productos: ProductoOpt[];
+  topProductos: ProductoOpt[];
   clientes: ClienteOpt[];
 }) {
   const router = useRouter();
@@ -86,6 +88,16 @@ export function NuevaVentaClient({
     });
     const custom = Number(data ?? 0);
     return custom > 0 ? custom : base;
+  }
+
+  async function agregarRapido(producto: ProductoOpt) {
+    const yaEnCarrito = items.find((i) => i.producto_id === producto.id);
+    if (yaEnCarrito) {
+      quitar(producto.id);
+      return;
+    }
+    const precio = await precioInicial(producto);
+    await agregar(producto, 1, precio);
   }
 
   async function agregar(producto: ProductoOpt, cantidad: number, precio: number) {
@@ -217,11 +229,13 @@ export function NuevaVentaClient({
       {paso === 'productos' && (
         <PasoProductos
           productos={productosFiltrados}
+          topProductos={topProductos}
           items={items}
           busqueda={busquedaProd}
           setBusqueda={setBusquedaProd}
           precioInicial={precioInicial}
           onAgregar={agregar}
+          onAgregarRapido={agregarRapido}
           onQuitar={quitar}
           onAtras={() => setPaso('cliente')}
           onContinuar={() => setPaso('resumen')}
@@ -382,21 +396,25 @@ function PasoCliente({
 
 function PasoProductos({
   productos,
+  topProductos,
   items,
   busqueda,
   setBusqueda,
   precioInicial,
   onAgregar,
+  onAgregarRapido,
   onQuitar,
   onAtras,
   onContinuar,
 }: {
   productos: ProductoOpt[];
+  topProductos: ProductoOpt[];
   items: Item[];
   busqueda: string;
   setBusqueda: (v: string) => void;
   precioInicial: (p: ProductoOpt) => Promise<number>;
   onAgregar: (p: ProductoOpt, cantidad: number, precio: number) => Promise<void>;
+  onAgregarRapido: (p: ProductoOpt) => Promise<void>;
   onQuitar: (productoId: string) => void;
   onAtras: () => void;
   onContinuar: () => void;
@@ -406,15 +424,43 @@ function PasoProductos({
       <div>
         <Label className="text-base">Paso 2 · Agregar productos</Label>
         <p className="text-sm text-muted-foreground">
-          Ingresa cantidad y ajusta el precio si es necesario.
+          Toca un frecuente para agregarlo rápido, o busca y ajusta cantidad y precio.
         </p>
       </div>
 
-      <Input
-        placeholder="Buscar producto por nombre o SKU…"
-        value={busqueda}
-        onChange={(e) => setBusqueda(e.target.value)}
-      />
+      {topProductos.length > 0 && (
+        <div>
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-xs font-medium uppercase text-muted-foreground">
+              Frecuentes
+            </span>
+            <span className="text-[10px] text-muted-foreground">
+              últimos 60 días · tocar para agregar
+            </span>
+          </div>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+            {topProductos.map((p) => {
+              const inCart = items.find((i) => i.producto_id === p.id);
+              return (
+                <QuickCard
+                  key={p.id}
+                  producto={p}
+                  enCarrito={inCart}
+                  onTap={() => onAgregarRapido(p)}
+                />
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      <div className="border-t pt-4">
+        <Input
+          placeholder="Buscar producto por nombre o SKU…"
+          value={busqueda}
+          onChange={(e) => setBusqueda(e.target.value)}
+        />
+      </div>
 
       <ul className="divide-y rounded-lg border">
         {productos.map((p) => (
@@ -691,5 +737,54 @@ function PasoResumen({
         </Button>
       </div>
     </section>
+  );
+}
+
+function QuickCard({
+  producto,
+  enCarrito,
+  onTap,
+}: {
+  producto: ProductoOpt;
+  enCarrito: Item | undefined;
+  onTap: () => void;
+}) {
+  const esPorPeso = producto.tipo_unidad === 'weight';
+  const precioBase = esPorPeso ? producto.precio_libra ?? 0 : producto.precio_base;
+  const sufijo = esPorPeso ? '/lb' : '';
+  const activo = Boolean(enCarrito);
+  return (
+    <button
+      type="button"
+      onClick={onTap}
+      className={cn(
+        'relative flex flex-col gap-1 rounded-lg border p-3 text-left transition',
+        activo
+          ? 'border-primary bg-primary/10'
+          : 'hover:border-primary/40 hover:bg-muted',
+      )}
+    >
+      {activo && (
+        <span className="absolute right-2 top-2 rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-medium text-primary-foreground">
+          ✓ {enCarrito!.cantidad.toFixed(esPorPeso ? 2 : 0)}
+        </span>
+      )}
+      <span
+        className={cn(
+          'inline-block w-fit rounded px-1.5 py-0.5 text-[9px] font-medium uppercase',
+          esPorPeso ? 'bg-amber-100 text-amber-900' : 'bg-blue-100 text-blue-900',
+        )}
+      >
+        {esPorPeso ? 'Libra' : 'Unidad'}
+      </span>
+      <span className="line-clamp-2 text-sm font-medium leading-tight">{producto.nombre}</span>
+      <span className="text-xs text-muted-foreground">
+        {formatCurrency(precioBase)}
+        {sufijo}
+      </span>
+      {activo && (
+        <span className="text-[10px] text-muted-foreground">tocar para quitar</span>
+      )}
+    </button>
   );
 }
