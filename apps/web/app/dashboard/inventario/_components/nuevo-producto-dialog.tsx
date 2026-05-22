@@ -16,6 +16,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import { cn } from '@/lib/utils';
 
 export function NuevoProductoDialog({ onCreated }: { onCreated: () => void }) {
   const supabase = createClient();
@@ -25,11 +26,21 @@ export function NuevoProductoDialog({ onCreated }: { onCreated: () => void }) {
     register,
     handleSubmit,
     reset,
+    watch,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<ProductoCreateInput>({
     resolver: zodResolver(productoCreateSchema),
-    defaultValues: { unidad: 'unidad', precio_base: 0, activo: true },
+    defaultValues: {
+      unidad: 'unidad',
+      tipo_unidad: 'unit',
+      precio_base: 0,
+      precio_libra: null,
+      activo: true,
+    },
   });
+
+  const tipo = watch('tipo_unidad');
 
   async function onSubmit(values: ProductoCreateInput) {
     setServerError(null);
@@ -41,7 +52,15 @@ export function NuevoProductoDialog({ onCreated }: { onCreated: () => void }) {
       setServerError('Tu cuenta no tiene empresa asignada.');
       return;
     }
-    const { error } = await supabase.from('productos').insert({ ...values, company_id: companyId });
+
+    const payload = {
+      ...values,
+      company_id: companyId,
+      precio_libra: values.tipo_unidad === 'weight' ? values.precio_libra : null,
+      unidad: values.tipo_unidad === 'weight' ? 'lb' : values.unidad || 'unidad',
+    };
+
+    const { error } = await supabase.from('productos').insert(payload as any);
     if (error) {
       setServerError(error.message);
       return;
@@ -62,6 +81,37 @@ export function NuevoProductoDialog({ onCreated }: { onCreated: () => void }) {
           <DialogDescription>Se creará con stock 0. Ajústalo desde la tabla.</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <div className="space-y-2">
+            <Label>Tipo de venta</Label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setValue('tipo_unidad', 'unit', { shouldValidate: true })}
+                className={cn(
+                  'rounded-md border px-3 py-2 text-sm font-medium',
+                  tipo === 'unit'
+                    ? 'border-primary bg-primary text-primary-foreground'
+                    : 'hover:bg-muted',
+                )}
+              >
+                Por unidad
+              </button>
+              <button
+                type="button"
+                onClick={() => setValue('tipo_unidad', 'weight', { shouldValidate: true })}
+                className={cn(
+                  'rounded-md border px-3 py-2 text-sm font-medium',
+                  tipo === 'weight'
+                    ? 'border-primary bg-primary text-primary-foreground'
+                    : 'hover:bg-muted',
+                )}
+              >
+                Por libra
+              </button>
+            </div>
+            <input type="hidden" {...register('tipo_unidad')} />
+          </div>
+
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label htmlFor="sku">SKU</Label>
@@ -70,27 +120,45 @@ export function NuevoProductoDialog({ onCreated }: { onCreated: () => void }) {
             </div>
             <div className="space-y-2">
               <Label htmlFor="unidad">Unidad</Label>
-              <Input id="unidad" {...register('unidad')} />
+              <Input
+                id="unidad"
+                {...register('unidad')}
+                placeholder={tipo === 'weight' ? 'lb' : 'unidad'}
+                disabled={tipo === 'weight'}
+              />
             </div>
           </div>
+
           <div className="space-y-2">
             <Label htmlFor="nombre">Nombre</Label>
             <Input id="nombre" {...register('nombre')} />
             {errors.nombre && <p className="text-xs text-destructive">{errors.nombre.message}</p>}
           </div>
+
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label htmlFor="categoria">Categoría</Label>
               <Input id="categoria" {...register('categoria')} />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="precio_base">Precio base</Label>
-              <Input id="precio_base" type="number" step="0.01" {...register('precio_base')} />
-              {errors.precio_base && (
-                <p className="text-xs text-destructive">{errors.precio_base.message}</p>
-              )}
-            </div>
+            {tipo === 'unit' ? (
+              <div className="space-y-2">
+                <Label htmlFor="precio_base">Precio por unidad</Label>
+                <Input id="precio_base" type="number" step="0.01" {...register('precio_base')} />
+                {errors.precio_base && (
+                  <p className="text-xs text-destructive">{errors.precio_base.message}</p>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Label htmlFor="precio_libra">Precio por libra</Label>
+                <Input id="precio_libra" type="number" step="0.01" {...register('precio_libra')} />
+                {errors.precio_libra && (
+                  <p className="text-xs text-destructive">{errors.precio_libra.message}</p>
+                )}
+              </div>
+            )}
           </div>
+
           {serverError && (
             <p className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
               {serverError}

@@ -14,7 +14,9 @@ export type InventarioRow = {
   nombre: string;
   categoria: string | null;
   unidad: string;
+  tipo_unidad: 'unit' | 'weight';
   precio_base: number;
+  precio_libra: number | null;
   activo: boolean;
   stock: number;
   stock_minimo: number;
@@ -123,7 +125,16 @@ export function InventarioClient({
                     <td className="px-4 py-2 text-right text-muted-foreground">
                       {row.stock_minimo.toFixed(2)}
                     </td>
-                    <td className="px-4 py-2 text-right">{formatCurrency(row.precio_base)}</td>
+                    <td className="px-4 py-2 text-right">
+                      {row.tipo_unidad === 'weight' ? (
+                        <>
+                          {formatCurrency(row.precio_libra ?? 0)}
+                          <span className="text-xs text-muted-foreground"> /lb</span>
+                        </>
+                      ) : (
+                        formatCurrency(row.precio_base)
+                      )}
+                    </td>
                     {canEdit && (
                       <td className="px-4 py-2 text-right">
                         <AjustarStockDialog
@@ -175,7 +186,11 @@ export function InventarioClient({
                 </div>
               </div>
               <div className="mt-2 flex items-center justify-between">
-                <span className="text-sm">{formatCurrency(row.precio_base)}</span>
+                <span className="text-sm">
+                  {row.tipo_unidad === 'weight'
+                    ? `${formatCurrency(row.precio_libra ?? 0)} /lb`
+                    : formatCurrency(row.precio_base)}
+                </span>
                 {canEdit && (
                   <AjustarStockDialog
                     productoId={row.id}

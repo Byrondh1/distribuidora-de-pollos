@@ -9,7 +9,9 @@ export default async function NuevaVentaPage() {
   const [{ data: productos }, { data: clientes }] = await Promise.all([
     supabase
       .from('productos')
-      .select('id, sku, nombre, precio_base, unidad, inventario(stock)')
+      .select(
+        'id, sku, nombre, precio_base, precio_libra, tipo_unidad, unidad, inventario(stock)',
+      )
       .eq('activo', true)
       .order('nombre'),
     supabase
@@ -26,6 +28,8 @@ export default async function NuevaVentaPage() {
       sku: p.sku,
       nombre: p.nombre,
       precio_base: Number(p.precio_base),
+      precio_libra: p.precio_libra == null ? null : Number(p.precio_libra),
+      tipo_unidad: (p.tipo_unidad ?? 'unit') as 'unit' | 'weight',
       unidad: p.unidad,
       stock: Number(inv?.stock ?? 0),
     };

@@ -13,6 +13,8 @@ export type ProductoOpt = {
   sku: string;
   nombre: string;
   precio_base: number;
+  precio_libra: number | null;
+  tipo_unidad: 'unit' | 'weight';
   unidad: string;
   stock: number;
 };
@@ -23,12 +25,15 @@ type Item = {
   producto_id: string;
   sku: string;
   nombre: string;
+  tipo_unidad: 'unit' | 'weight';
   unidad: string;
   cantidad: number;
   precio_unitario: number;
+  precio_base_ref: number;
 };
 
 type Metodo = 'efectivo' | 'transferencia' | 'credito';
+type Paso = 'cliente' | 'productos' | 'resumen';
 
 const METODOS: { value: Metodo; label: string }[] = [
   { value: 'efectivo', label: 'Efectivo' },
@@ -45,16 +50,25 @@ export function NuevaVentaClient({
 }) {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
-  const [tab, setTab] = useState<'items' | 'resumen'>('items');
+
+  const [paso, setPaso] = useState<Paso>('cliente');
+  const [cliente, setCliente] = useState<ClienteOpt | null>(null);
+  const [sinCliente, setSinCliente] = useState(false);
+  const [busquedaCli, setBusquedaCli] = useState('');
+
   const [items, setItems] = useState<Item[]>([]);
   const [busquedaProd, setBusquedaProd] = useState('');
-  const [busquedaCli, setBusquedaCli] = useState('');
-  const [cliente, setCliente] = useState<ClienteOpt | null>(null);
+
   const [metodo, setMetodo] = useState<Metodo>('efectivo');
-  const [descuento, setDescuento] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const total = items.reduce((s, i) => s + i.cantidad * i.precio_unitario, 0);
+  const clienteResuelto = sinCliente || cliente !== null;
+
+  const clientesFiltrados = clientes.filter(
+    (c) => !busquedaCli || c.nombre.toLowerCase().includes(busquedaCli.toLowerCase()),
+  );
   const productosFiltrados = productos.filter(
     (p) =>
       !busquedaProd ||
@@ -62,47 +76,55 @@ export function NuevaVentaClient({
       p.sku.toLowerCase().includes(busquedaProd.toLowerCase()),
   );
 
-  const clientesFiltrados = clientes.filter(
-    (c) => !busquedaCli || c.nombre.toLowerCase().includes(busquedaCli.toLowerCase()),
-  );
-
-  const subtotal = items.reduce((s, i) => s + i.cantidad * i.precio_unitario, 0);
-  const total = Math.max(0, subtotal - descuento);
-
-  async function getPrecio(productoId: string, base: number) {
+  async function precioInicial(producto: ProductoOpt): Promise<number> {
+    const base =
+      producto.tipo_unidad === 'weight' ? producto.precio_libra ?? 0 : producto.precio_base;
     if (!cliente) return base;
     const { data } = await supabase.rpc('precio_efectivo', {
       p_cliente_id: cliente.id,
-      p_producto_id: productoId,
+      p_producto_id: producto.id,
     });
-    return Number(data ?? base);
+    const custom = Number(data ?? 0);
+    return custom > 0 ? custom : base;
   }
 
-  async function agregar(producto: ProductoOpt, qty: number) {
-    if (!qty || qty <= 0) return;
-    if (qty > producto.stock) {
-      alert(`Stock insuficiente. Disponible: ${producto.stock.toFixed(2)} ${producto.unidad}`);
+  async function agregar(producto: ProductoOpt, cantidad: number, precio: number) {
+    if (!cantidad || cantidad <= 0) {
+      alert('Cantidad inválida');
       return;
     }
-    const precio = await getPrecio(producto.id, producto.precio_base);
+    if (cantidad > producto.stock) {
+      alert(
+        `Stock insuficiente. Disponible: ${producto.stock.toFixed(2)} ${
+          producto.tipo_unidad === 'weight' ? 'lb' : producto.unidad
+        }`,
+      );
+      return;
+    }
+    if (!precio || precio < 0) {
+      alert('Precio inválido');
+      return;
+    }
+    const base =
+      producto.tipo_unidad === 'weight' ? producto.precio_libra ?? 0 : producto.precio_base;
     setItems((prev) => {
-      const existing = prev.find((i) => i.producto_id === producto.id);
-      if (existing) {
-        return prev.map((i) =>
-          i.producto_id === producto.id ? { ...i, cantidad: i.cantidad + qty } : i,
-        );
+      const existing = prev.findIndex((i) => i.producto_id === producto.id);
+      const next: Item = {
+        producto_id: producto.id,
+        sku: producto.sku,
+        nombre: producto.nombre,
+        tipo_unidad: producto.tipo_unidad,
+        unidad: producto.tipo_unidad === 'weight' ? 'lb' : producto.unidad,
+        cantidad,
+        precio_unitario: precio,
+        precio_base_ref: base,
+      };
+      if (existing >= 0) {
+        const copy = [...prev];
+        copy[existing] = next;
+        return copy;
       }
-      return [
-        ...prev,
-        {
-          producto_id: producto.id,
-          sku: producto.sku,
-          nombre: producto.nombre,
-          unidad: producto.unidad,
-          cantidad: qty,
-          precio_unitario: precio,
-        },
-      ];
+      return [...prev, next];
     });
   }
 
@@ -114,7 +136,7 @@ export function NuevaVentaClient({
     setError(null);
     if (items.length === 0) {
       setError('Agrega al menos un producto.');
-      setTab('items');
+      setPaso('productos');
       return;
     }
     setSubmitting(true);
@@ -133,8 +155,8 @@ export function NuevaVentaClient({
           cliente_id: cliente?.id ?? null,
           fecha: new Date().toISOString().slice(0, 10),
           metodo_pago: metodo,
-          descuento,
-        })
+          descuento: 0,
+        } as any)
         .select('id')
         .single();
       if (errV || !venta) throw new Error(errV?.message ?? 'No se pudo crear la venta');
@@ -146,7 +168,7 @@ export function NuevaVentaClient({
         cantidad: i.cantidad,
         precio_unitario: i.precio_unitario,
       }));
-      const { error: errI } = await supabase.from('venta_items').insert(itemsPayload);
+      const { error: errI } = await supabase.from('venta_items').insert(itemsPayload as any);
       if (errI) throw new Error(errI.message);
 
       const { error: errC } = await supabase.rpc('confirmar_venta', { p_venta_id: venta.id });
@@ -170,244 +192,504 @@ export function NuevaVentaClient({
         </p>
       </div>
 
-      <div className="flex gap-1 border-b">
-        <TabButton active={tab === 'items'} onClick={() => setTab('items')}>
-          Productos ({items.length})
-        </TabButton>
-        <TabButton active={tab === 'resumen'} onClick={() => setTab('resumen')}>
-          Resumen
-        </TabButton>
-      </div>
+      <Stepper paso={paso} onChange={setPaso} clienteOk={clienteResuelto} itemsOk={items.length > 0} />
 
-      {tab === 'items' && (
-        <div className="space-y-3">
-          <Input
-            placeholder="Buscar producto por nombre o SKU…"
-            value={busquedaProd}
-            onChange={(e) => setBusquedaProd(e.target.value)}
-            className="max-w-md"
-          />
-          <ul className="divide-y rounded-lg border">
-            {productosFiltrados.map((p) => (
-              <ProductoRow
-                key={p.id}
-                producto={p}
-                enCarrito={items.find((i) => i.producto_id === p.id)?.cantidad}
-                onAgregar={(qty) => agregar(p, qty)}
-                onQuitar={() => quitar(p.id)}
-              />
-            ))}
-            {productosFiltrados.length === 0 && (
-              <li className="px-4 py-8 text-center text-sm text-muted-foreground">
-                Sin productos
-              </li>
-            )}
-          </ul>
-        </div>
+      {paso === 'cliente' && (
+        <PasoCliente
+          cliente={cliente}
+          sinCliente={sinCliente}
+          busqueda={busquedaCli}
+          setBusqueda={setBusquedaCli}
+          clientes={clientesFiltrados}
+          onElegir={(c) => {
+            setCliente(c);
+            setSinCliente(false);
+            setBusquedaCli('');
+          }}
+          onSinCliente={() => {
+            setCliente(null);
+            setSinCliente(true);
+          }}
+          onContinuar={() => setPaso('productos')}
+        />
       )}
 
-      {tab === 'resumen' && (
-        <div className="grid gap-6 lg:grid-cols-3">
-          <div className="space-y-4 lg:col-span-2">
-            <section className="rounded-lg border p-4">
-              <Label>Cliente</Label>
-              {cliente ? (
-                <div className="mt-2 flex items-center justify-between rounded-md border bg-muted/30 px-3 py-2">
-                  <span className="font-medium">{cliente.nombre}</span>
-                  <Button variant="ghost" size="sm" onClick={() => setCliente(null)}>
-                    Quitar
-                  </Button>
-                </div>
-              ) : (
-                <>
-                  <Input
-                    placeholder="Buscar cliente…"
-                    value={busquedaCli}
-                    onChange={(e) => setBusquedaCli(e.target.value)}
-                    className="mt-2"
-                  />
-                  {busquedaCli && (
-                    <ul className="mt-2 max-h-48 divide-y overflow-y-auto rounded-md border">
-                      {clientesFiltrados.slice(0, 10).map((c) => (
-                        <li key={c.id}>
-                          <button
-                            type="button"
-                            className="block w-full px-3 py-2 text-left text-sm hover:bg-muted"
-                            onClick={() => {
-                              setCliente(c);
-                              setBusquedaCli('');
-                            }}
-                          >
-                            {c.nombre}
-                          </button>
-                        </li>
-                      ))}
-                      {clientesFiltrados.length === 0 && (
-                        <li className="px-3 py-2 text-sm text-muted-foreground">Sin resultados</li>
-                      )}
-                    </ul>
-                  )}
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    Opcional · Si no eliges cliente, será venta al contado.
-                  </p>
-                </>
-              )}
-            </section>
+      {paso === 'productos' && (
+        <PasoProductos
+          productos={productosFiltrados}
+          items={items}
+          busqueda={busquedaProd}
+          setBusqueda={setBusquedaProd}
+          precioInicial={precioInicial}
+          onAgregar={agregar}
+          onQuitar={quitar}
+          onAtras={() => setPaso('cliente')}
+          onContinuar={() => setPaso('resumen')}
+        />
+      )}
 
-            <section className="rounded-lg border p-4">
-              <Label>Método de pago</Label>
-              <div className="mt-2 grid grid-cols-3 gap-2">
-                {METODOS.map((m) => (
-                  <button
-                    key={m.value}
-                    type="button"
-                    onClick={() => setMetodo(m.value)}
-                    className={cn(
-                      'rounded-md border px-3 py-2 text-sm font-medium',
-                      metodo === m.value
-                        ? 'border-primary bg-primary text-primary-foreground'
-                        : 'hover:bg-muted',
-                    )}
-                  >
-                    {m.label}
-                  </button>
-                ))}
-              </div>
-            </section>
-
-            <section className="rounded-lg border">
-              <header className="border-b px-4 py-2 text-sm font-medium">
-                Ítems ({items.length})
-              </header>
-              <ul className="divide-y">
-                {items.map((i) => (
-                  <li key={i.producto_id} className="flex items-center justify-between px-4 py-3">
-                    <div className="min-w-0">
-                      <div className="font-medium">{i.nombre}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {i.cantidad.toFixed(2)} {i.unidad} ×{' '}
-                        {formatCurrency(i.precio_unitario)}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className="font-medium">
-                        {formatCurrency(i.cantidad * i.precio_unitario)}
-                      </span>
-                      <Button variant="ghost" size="sm" onClick={() => quitar(i.producto_id)}>
-                        ✕
-                      </Button>
-                    </div>
-                  </li>
-                ))}
-                {items.length === 0 && (
-                  <li className="px-4 py-6 text-center text-sm text-muted-foreground">
-                    No hay productos. Vuelve a la pestaña Productos.
-                  </li>
-                )}
-              </ul>
-            </section>
-          </div>
-
-          <aside className="space-y-3 rounded-lg border p-4 lg:sticky lg:top-20 lg:self-start">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Subtotal</span>
-              <span>{formatCurrency(subtotal)}</span>
-            </div>
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Descuento</span>
-              <Input
-                type="number"
-                min="0"
-                step="0.01"
-                value={String(descuento)}
-                onChange={(e) => setDescuento(parseFloat(e.target.value) || 0)}
-                className="h-8 w-28 text-right"
-              />
-            </div>
-            <div className="flex items-center justify-between border-t pt-3 text-base font-semibold">
-              <span>Total</span>
-              <span>{formatCurrency(total)}</span>
-            </div>
-            {error && (
-              <div className="rounded-md border border-destructive/40 bg-destructive/10 p-2 text-xs text-destructive">
-                {error}
-              </div>
-            )}
-            <Button className="w-full" disabled={submitting} onClick={confirmar}>
-              {submitting ? 'Procesando…' : 'Confirmar venta'}
-            </Button>
-          </aside>
-        </div>
+      {paso === 'resumen' && (
+        <PasoResumen
+          cliente={cliente}
+          sinCliente={sinCliente}
+          items={items}
+          metodo={metodo}
+          total={total}
+          submitting={submitting}
+          error={error}
+          onSetMetodo={setMetodo}
+          onQuitarItem={quitar}
+          onAtras={() => setPaso('productos')}
+          onConfirmar={confirmar}
+        />
       )}
     </div>
   );
 }
 
-function TabButton({
-  active,
-  onClick,
-  children,
+function Stepper({
+  paso,
+  onChange,
+  clienteOk,
+  itemsOk,
 }: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
+  paso: Paso;
+  onChange: (p: Paso) => void;
+  clienteOk: boolean;
+  itemsOk: boolean;
+}) {
+  const steps: { id: Paso; label: string; n: number; locked: boolean }[] = [
+    { id: 'cliente', label: 'Cliente', n: 1, locked: false },
+    { id: 'productos', label: 'Productos', n: 2, locked: !clienteOk },
+    { id: 'resumen', label: 'Resumen', n: 3, locked: !clienteOk || !itemsOk },
+  ];
+  return (
+    <ol className="flex items-center gap-2 overflow-x-auto rounded-lg border bg-muted/30 p-2">
+      {steps.map((s, i) => (
+        <li key={s.id} className="flex items-center gap-2">
+          <button
+            type="button"
+            disabled={s.locked}
+            onClick={() => onChange(s.id)}
+            className={cn(
+              'flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium',
+              paso === s.id
+                ? 'bg-primary text-primary-foreground'
+                : s.locked
+                  ? 'cursor-not-allowed text-muted-foreground'
+                  : 'hover:bg-background',
+            )}
+          >
+            <span
+              className={cn(
+                'flex h-5 w-5 items-center justify-center rounded-full text-xs',
+                paso === s.id ? 'bg-primary-foreground text-primary' : 'bg-muted-foreground/30',
+              )}
+            >
+              {s.n}
+            </span>
+            {s.label}
+          </button>
+          {i < steps.length - 1 && <span className="text-muted-foreground">→</span>}
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+function PasoCliente({
+  cliente,
+  sinCliente,
+  busqueda,
+  setBusqueda,
+  clientes,
+  onElegir,
+  onSinCliente,
+  onContinuar,
+}: {
+  cliente: ClienteOpt | null;
+  sinCliente: boolean;
+  busqueda: string;
+  setBusqueda: (v: string) => void;
+  clientes: ClienteOpt[];
+  onElegir: (c: ClienteOpt) => void;
+  onSinCliente: () => void;
+  onContinuar: () => void;
+}) {
+  const seleccion = cliente !== null || sinCliente;
+  return (
+    <section className="space-y-4 rounded-lg border p-4">
+      <div>
+        <Label className="text-base">Paso 1 · Seleccionar cliente</Label>
+        <p className="text-sm text-muted-foreground">
+          Busca un cliente o continúa como venta al contado.
+        </p>
+      </div>
+
+      <button
+        type="button"
+        onClick={onSinCliente}
+        className={cn(
+          'w-full rounded-md border px-3 py-2 text-left text-sm',
+          sinCliente ? 'border-primary bg-primary/10 font-medium' : 'hover:bg-muted',
+        )}
+      >
+        Sin cliente · venta al contado
+      </button>
+
+      <div className="space-y-2">
+        <Input
+          placeholder="Buscar cliente por nombre…"
+          value={busqueda}
+          onChange={(e) => setBusqueda(e.target.value)}
+        />
+        {busqueda && (
+          <ul className="max-h-60 divide-y overflow-y-auto rounded-md border">
+            {clientes.slice(0, 20).map((c) => (
+              <li key={c.id}>
+                <button
+                  type="button"
+                  onClick={() => onElegir(c)}
+                  className={cn(
+                    'block w-full px-3 py-2 text-left text-sm hover:bg-muted',
+                    cliente?.id === c.id && 'bg-primary/10 font-medium',
+                  )}
+                >
+                  {c.nombre}
+                </button>
+              </li>
+            ))}
+            {clientes.length === 0 && (
+              <li className="px-3 py-2 text-sm text-muted-foreground">Sin resultados</li>
+            )}
+          </ul>
+        )}
+        {cliente && (
+          <div className="rounded-md border bg-primary/10 px-3 py-2 text-sm">
+            <span className="font-medium">{cliente.nombre}</span> seleccionado
+          </div>
+        )}
+      </div>
+
+      <div className="flex justify-end">
+        <Button onClick={onContinuar} disabled={!seleccion}>
+          Continuar a productos
+        </Button>
+      </div>
+    </section>
+  );
+}
+
+function PasoProductos({
+  productos,
+  items,
+  busqueda,
+  setBusqueda,
+  precioInicial,
+  onAgregar,
+  onQuitar,
+  onAtras,
+  onContinuar,
+}: {
+  productos: ProductoOpt[];
+  items: Item[];
+  busqueda: string;
+  setBusqueda: (v: string) => void;
+  precioInicial: (p: ProductoOpt) => Promise<number>;
+  onAgregar: (p: ProductoOpt, cantidad: number, precio: number) => Promise<void>;
+  onQuitar: (productoId: string) => void;
+  onAtras: () => void;
+  onContinuar: () => void;
 }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        'px-3 py-2 text-sm font-medium border-b-2 -mb-px',
-        active ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground',
-      )}
-    >
-      {children}
-    </button>
+    <section className="space-y-4 rounded-lg border p-4">
+      <div>
+        <Label className="text-base">Paso 2 · Agregar productos</Label>
+        <p className="text-sm text-muted-foreground">
+          Ingresa cantidad y ajusta el precio si es necesario.
+        </p>
+      </div>
+
+      <Input
+        placeholder="Buscar producto por nombre o SKU…"
+        value={busqueda}
+        onChange={(e) => setBusqueda(e.target.value)}
+      />
+
+      <ul className="divide-y rounded-lg border">
+        {productos.map((p) => (
+          <ProductoRow
+            key={p.id}
+            producto={p}
+            enCarrito={items.find((i) => i.producto_id === p.id)}
+            precioInicial={precioInicial}
+            onAgregar={onAgregar}
+            onQuitar={() => onQuitar(p.id)}
+          />
+        ))}
+        {productos.length === 0 && (
+          <li className="px-4 py-8 text-center text-sm text-muted-foreground">Sin productos</li>
+        )}
+      </ul>
+
+      <div className="flex justify-between">
+        <Button variant="outline" onClick={onAtras}>
+          ← Atrás
+        </Button>
+        <Button onClick={onContinuar} disabled={items.length === 0}>
+          Continuar al resumen ({items.length})
+        </Button>
+      </div>
+    </section>
   );
 }
 
 function ProductoRow({
   producto,
   enCarrito,
+  precioInicial,
   onAgregar,
   onQuitar,
 }: {
   producto: ProductoOpt;
-  enCarrito?: number;
-  onAgregar: (qty: number) => void;
+  enCarrito: Item | undefined;
+  precioInicial: (p: ProductoOpt) => Promise<number>;
+  onAgregar: (p: ProductoOpt, cantidad: number, precio: number) => Promise<void>;
   onQuitar: () => void;
 }) {
-  const [qty, setQty] = useState('1');
+  const esPorPeso = producto.tipo_unidad === 'weight';
+  const precioBase = esPorPeso ? producto.precio_libra ?? 0 : producto.precio_base;
+  const sufijoUnidad = esPorPeso ? 'lb' : producto.unidad;
+  const labelPrecio = esPorPeso ? 'Precio /lb' : 'Precio /unidad';
+  const labelCantidad = esPorPeso ? 'Libras' : 'Cantidad';
+
+  const [cantidad, setCantidad] = useState<string>(enCarrito ? String(enCarrito.cantidad) : '');
+  const [precio, setPrecio] = useState<string>(
+    enCarrito ? String(enCarrito.precio_unitario) : String(precioBase),
+  );
+
+  async function inicializarPrecio() {
+    if (enCarrito) return;
+    const p = await precioInicial(producto);
+    setPrecio(String(p));
+  }
+
+  const subtotal = (parseFloat(cantidad) || 0) * (parseFloat(precio) || 0);
+
   return (
-    <li className="flex flex-col gap-2 px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
-      <div className="min-w-0">
-        <div className="font-medium">{producto.nombre}</div>
-        <div className="text-xs text-muted-foreground">
-          {producto.sku} · Stock {producto.stock.toFixed(2)} {producto.unidad} ·{' '}
-          {formatCurrency(producto.precio_base)}
+    <li className="space-y-3 px-3 py-3" onFocus={inicializarPrecio}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="font-medium">{producto.nombre}</span>
+            <span
+              className={cn(
+                'rounded px-1.5 py-0.5 text-[10px] font-medium uppercase',
+                esPorPeso ? 'bg-amber-100 text-amber-900' : 'bg-blue-100 text-blue-900',
+              )}
+            >
+              {esPorPeso ? 'Por libra' : 'Por unidad'}
+            </span>
+          </div>
+          <div className="text-xs text-muted-foreground">
+            {producto.sku} · Stock {producto.stock.toFixed(2)} {sufijoUnidad} · Base{' '}
+            {formatCurrency(precioBase)}
+            {esPorPeso ? '/lb' : ''}
+          </div>
+          {enCarrito && (
+            <div className="mt-1 text-xs text-primary">
+              En venta: {enCarrito.cantidad.toFixed(2)} {sufijoUnidad} ×{' '}
+              {formatCurrency(enCarrito.precio_unitario)} ={' '}
+              {formatCurrency(enCarrito.cantidad * enCarrito.precio_unitario)}
+            </div>
+          )}
         </div>
-        {enCarrito !== undefined && (
-          <div className="text-xs text-primary">En carrito: {enCarrito.toFixed(2)}</div>
-        )}
       </div>
-      <div className="flex items-center gap-2">
-        <Input
-          type="number"
-          min="0"
-          step="0.01"
-          value={qty}
-          onChange={(e) => setQty(e.target.value)}
-          className="h-9 w-20 text-right"
-        />
-        <Button size="sm" onClick={() => onAgregar(parseFloat(qty) || 0)}>
-          Agregar
-        </Button>
-        {enCarrito !== undefined && (
-          <Button size="sm" variant="outline" onClick={onQuitar}>
-            ✕
+
+      <div className="grid grid-cols-[1fr_1fr_auto] gap-2 sm:max-w-md">
+        <div>
+          <Label className="text-[10px] uppercase text-muted-foreground">{labelCantidad}</Label>
+          <Input
+            type="number"
+            min="0"
+            step="0.01"
+            inputMode="decimal"
+            value={cantidad}
+            onChange={(e) => setCantidad(e.target.value)}
+            placeholder={esPorPeso ? '3.54' : '1'}
+            className="h-9"
+          />
+        </div>
+        <div>
+          <Label className="text-[10px] uppercase text-muted-foreground">{labelPrecio}</Label>
+          <Input
+            type="number"
+            min="0"
+            step="0.01"
+            inputMode="decimal"
+            value={precio}
+            onChange={(e) => setPrecio(e.target.value)}
+            className="h-9"
+          />
+        </div>
+        <div className="flex flex-col justify-end">
+          <Button
+            size="sm"
+            onClick={() => onAgregar(producto, parseFloat(cantidad) || 0, parseFloat(precio) || 0)}
+          >
+            {enCarrito ? 'Actualizar' : 'Agregar'}
           </Button>
-        )}
+        </div>
       </div>
+
+      {(parseFloat(cantidad) || 0) > 0 && (
+        <div className="text-xs text-muted-foreground">
+          Subtotal estimado: <span className="font-medium">{formatCurrency(subtotal)}</span>
+        </div>
+      )}
+
+      {enCarrito && (
+        <Button size="sm" variant="ghost" onClick={onQuitar} className="text-destructive">
+          Quitar de la venta
+        </Button>
+      )}
     </li>
+  );
+}
+
+function PasoResumen({
+  cliente,
+  sinCliente,
+  items,
+  metodo,
+  total,
+  submitting,
+  error,
+  onSetMetodo,
+  onQuitarItem,
+  onAtras,
+  onConfirmar,
+}: {
+  cliente: ClienteOpt | null;
+  sinCliente: boolean;
+  items: Item[];
+  metodo: Metodo;
+  total: number;
+  submitting: boolean;
+  error: string | null;
+  onSetMetodo: (m: Metodo) => void;
+  onQuitarItem: (productoId: string) => void;
+  onAtras: () => void;
+  onConfirmar: () => void;
+}) {
+  return (
+    <section className="space-y-4 rounded-lg border p-4">
+      <div>
+        <Label className="text-base">Paso 3 · Resumen</Label>
+        <p className="text-sm text-muted-foreground">Confirma los datos antes de procesar.</p>
+      </div>
+
+      <div className="rounded-md border bg-muted/30 px-3 py-2 text-sm">
+        <span className="text-muted-foreground">Cliente:</span>{' '}
+        <span className="font-medium">
+          {cliente ? cliente.nombre : sinCliente ? 'Sin cliente · venta al contado' : '—'}
+        </span>
+      </div>
+
+      <div className="rounded-md border">
+        <header className="border-b px-3 py-2 text-sm font-medium">
+          Ítems ({items.length})
+        </header>
+        <ul className="divide-y">
+          {items.map((i) => (
+            <li key={i.producto_id} className="space-y-1 px-3 py-3 text-sm">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 font-medium">
+                    <span>{i.nombre}</span>
+                    <span
+                      className={cn(
+                        'rounded px-1.5 py-0.5 text-[10px] font-medium uppercase',
+                        i.tipo_unidad === 'weight'
+                          ? 'bg-amber-100 text-amber-900'
+                          : 'bg-blue-100 text-blue-900',
+                      )}
+                    >
+                      {i.tipo_unidad === 'weight' ? 'Por libra' : 'Por unidad'}
+                    </span>
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {i.cantidad.toFixed(2)} {i.unidad} ×{' '}
+                    {formatCurrency(i.precio_unitario)}
+                    {i.tipo_unidad === 'weight' ? '/lb' : ''}
+                    {i.precio_unitario !== i.precio_base_ref && (
+                      <span className="ml-1 text-amber-700">
+                        (base {formatCurrency(i.precio_base_ref)})
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="font-semibold">
+                    {formatCurrency(i.cantidad * i.precio_unitario)}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => onQuitarItem(i.producto_id)}
+                    className="text-xs text-muted-foreground hover:text-destructive"
+                  >
+                    Quitar
+                  </button>
+                </div>
+              </div>
+            </li>
+          ))}
+          {items.length === 0 && (
+            <li className="px-3 py-6 text-center text-sm text-muted-foreground">Sin ítems</li>
+          )}
+        </ul>
+      </div>
+
+      <div className="space-y-2">
+        <Label className="text-sm">Método de pago</Label>
+        <div className="grid grid-cols-3 gap-2">
+          {METODOS.map((m) => (
+            <button
+              key={m.value}
+              type="button"
+              onClick={() => onSetMetodo(m.value)}
+              className={cn(
+                'rounded-md border px-3 py-2 text-sm font-medium',
+                metodo === m.value
+                  ? 'border-primary bg-primary text-primary-foreground'
+                  : 'hover:bg-muted',
+              )}
+            >
+              {m.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between border-t pt-3 text-lg font-semibold">
+        <span>Total</span>
+        <span>{formatCurrency(total)}</span>
+      </div>
+
+      {error && (
+        <div className="rounded-md border border-destructive/40 bg-destructive/10 p-2 text-sm text-destructive">
+          {error}
+        </div>
+      )}
+
+      <div className="flex justify-between gap-2">
+        <Button variant="outline" onClick={onAtras} disabled={submitting}>
+          ← Atrás
+        </Button>
+        <Button onClick={onConfirmar} disabled={submitting || items.length === 0}>
+          {submitting ? 'Procesando…' : 'Confirmar venta'}
+        </Button>
+      </div>
+    </section>
   );
 }

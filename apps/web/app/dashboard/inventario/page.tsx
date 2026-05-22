@@ -12,7 +12,7 @@ export default async function InventarioPage() {
   const { data, error } = await supabase
     .from('productos')
     .select(
-      'id, sku, nombre, categoria, unidad, precio_base, activo, inventario(stock, stock_minimo, ubicacion)',
+      'id, sku, nombre, categoria, unidad, tipo_unidad, precio_base, precio_libra, activo, inventario(stock, stock_minimo, ubicacion)',
     )
     .order('nombre', { ascending: true });
 
@@ -24,7 +24,7 @@ export default async function InventarioPage() {
     );
   }
 
-  const rows: InventarioRow[] = (data ?? []).map((p) => {
+  const rows: InventarioRow[] = ((data ?? []) as any[]).map((p) => {
     const inv = Array.isArray(p.inventario) ? p.inventario[0] : p.inventario;
     return {
       id: p.id,
@@ -32,7 +32,9 @@ export default async function InventarioPage() {
       nombre: p.nombre,
       categoria: p.categoria,
       unidad: p.unidad,
+      tipo_unidad: (p.tipo_unidad ?? 'unit') as 'unit' | 'weight',
       precio_base: Number(p.precio_base),
+      precio_libra: p.precio_libra == null ? null : Number(p.precio_libra),
       activo: p.activo,
       stock: Number(inv?.stock ?? 0),
       stock_minimo: Number(inv?.stock_minimo ?? 0),
