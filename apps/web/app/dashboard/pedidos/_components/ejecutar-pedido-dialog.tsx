@@ -170,6 +170,15 @@ export function EjecutarPedidoDialog({
       setError('Agrega al menos un producto antes de confirmar.');
       return;
     }
+    const sinPrecio = itemsVisibles.find(
+      (i) =>
+        (i.cantidad_final ?? i.cantidad_estimada) > 0 &&
+        (!i.precio_unitario || i.precio_unitario <= 0),
+    );
+    if (sinPrecio) {
+      setError(`"${sinPrecio.producto_nombre}" necesita un precio mayor a 0.`);
+      return;
+    }
     setSubmitting(true);
     try {
       await persistirCambios();

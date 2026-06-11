@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useState } from 'react';
+import { Suspense, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -14,7 +14,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   const [serverError, setServerError] = useState<string | null>(null);
 
   const {
@@ -30,10 +30,13 @@ function LoginForm() {
       setServerError(error.message);
       return;
     }
-    const next = params.get('next') as `/${string}` | null;
+    // Solo rutas internas: "//evil.com" es protocolo-relativo y saldría del sitio.
+    const rawNext = params.get('next');
+    const next =
+      rawNext && rawNext.startsWith('/') && !rawNext.startsWith('//') ? rawNext : null;
     const role = (data.user?.app_metadata?.role as string | undefined) ?? null;
     const fallback = role === 'vendedor' ? '/dashboard/ventas/nueva' : '/dashboard/inventario';
-    router.push(next ?? fallback);
+    router.push((next ?? fallback) as `/${string}`);
     router.refresh();
   }
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -29,7 +29,7 @@ export function PreciosClienteDialog({
   clienteId: string;
   clienteNombre: string;
 }) {
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   const [open, setOpen] = useState(false);
   const [rows, setRows] = useState<ProductoPrecio[]>([]);
   const [saving, setSaving] = useState<string | null>(null);

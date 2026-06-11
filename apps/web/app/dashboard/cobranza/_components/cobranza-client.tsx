@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { createClient } from '@/lib/supabase/client';
 import { formatCurrency } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,10 +26,32 @@ const ESTADO_STYLES: Record<string, string> = {
   pagado:  'bg-green-100 text-green-700',
 };
 
-export function CobranzaClient({ initialRows }: { initialRows: CreditoRow[] }) {
+export function CobranzaClient({
+  initialRows,
+  role,
+}: {
+  initialRows: CreditoRow[];
+  role: 'admin' | 'vendedor';
+}) {
   const router = useRouter();
+  const supabase = useMemo(() => createClient(), []);
   const [rows, setRows] = useState(initialRows);
   const [query, setQuery] = useState('');
+  const [marcando, setMarcando] = useState(false);
+  const [aviso, setAviso] = useState<string | null>(null);
+
+  async function marcarVencidos() {
+    setMarcando(true);
+    setAviso(null);
+    const { data, error } = await supabase.rpc('marcar_creditos_vencidos' as any);
+    setMarcando(false);
+    if (error) {
+      setAviso(`Error: ${error.message}`);
+      return;
+    }
+    setAviso(`${Number(data ?? 0)} crédito(s) marcados como vencidos.`);
+    router.refresh();
+  }
 
   const totalPendiente = rows.reduce((s, r) => s + Number(r.saldo_pendiente), 0);
   const vencidos = rows.filter((r) => r.estado === 'vencido').length;
@@ -60,10 +83,22 @@ export function CobranzaClient({ initialRows }: { initialRows: CreditoRow[] }) {
             Pendiente: {formatCurrency(totalPendiente)} · {vencidos} vencidos
           </p>
         </div>
-        <Button variant="outline" onClick={() => router.refresh()}>
-          Actualizar
-        </Button>
+        <div className="flex gap-2">
+          {role === 'admin' && (
+            <Button variant="outline" onClick={marcarVencidos} disabled={marcando}>
+              {marcando ? 'Marcando…' : 'Marcar vencidos'}
+            </Button>
+          )}
+          <Button variant="outline" onClick={() => router.refresh()}>
+            Actualizar
+          </Button>
+        </div>
       </div>
+      {aviso && (
+        <div className="rounded-md border bg-muted/30 p-2 text-sm text-muted-foreground">
+          {aviso}
+        </div>
+      )}
       <Input
         placeholder="Buscar por cliente o teléfono…"
         value={query}

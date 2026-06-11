@@ -64,6 +64,7 @@ export function NuevaVentaClient({
   const [metodo, setMetodo] = useState<Metodo>('efectivo');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [itemError, setItemError] = useState<string | null>(null);
 
   const total = items.reduce((s, i) => s + i.cantidad * i.precio_unitario, 0);
   const clienteResuelto = sinCliente || cliente !== null;
@@ -101,20 +102,21 @@ export function NuevaVentaClient({
   }
 
   async function agregar(producto: ProductoOpt, cantidad: number, precio: number) {
-    if (!cantidad || cantidad <= 0) {
-      alert('Cantidad inválida');
+    setItemError(null);
+    if (Number.isNaN(cantidad) || !cantidad || cantidad <= 0) {
+      setItemError(`Cantidad inválida para "${producto.nombre}".`);
       return;
     }
     if (cantidad > producto.stock) {
-      alert(
-        `Stock insuficiente. Disponible: ${producto.stock.toFixed(2)} ${
+      setItemError(
+        `Stock insuficiente para "${producto.nombre}". Disponible: ${producto.stock.toFixed(2)} ${
           producto.tipo_unidad === 'weight' ? 'lb' : producto.unidad
         }`,
       );
       return;
     }
-    if (!precio || precio < 0) {
-      alert('Precio inválido');
+    if (Number.isNaN(precio) || !precio || precio <= 0) {
+      setItemError(`Precio inválido para "${producto.nombre}". Debe ser mayor a 0.`);
       return;
     }
     const base =
@@ -151,39 +153,24 @@ export function NuevaVentaClient({
       setPaso('productos');
       return;
     }
+    const sinPrecio = items.find((i) => !i.precio_unitario || i.precio_unitario <= 0);
+    if (sinPrecio) {
+      setError(`"${sinPrecio.nombre}" no tiene precio asignado.`);
+      setPaso('productos');
+      return;
+    }
     setSubmitting(true);
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      const companyId = user?.app_metadata?.company_id as string | undefined;
-      if (!user || !companyId) throw new Error('Sesión inválida');
-
-      const { data: venta, error: errV } = await supabase
-        .from('ventas')
-        .insert({
-          company_id: companyId,
-          vendedor_id: user.id,
-          cliente_id: cliente?.id ?? null,
-          fecha: new Date().toISOString().slice(0, 10),
-          metodo_pago: metodo,
-          descuento: 0,
-        } as any)
-        .select('id')
-        .single();
-      if (errV || !venta) throw new Error(errV?.message ?? 'No se pudo crear la venta');
-
-      const itemsPayload = items.map((i) => ({
-        venta_id: venta.id,
-        company_id: companyId,
-        producto_id: i.producto_id,
-        cantidad: i.cantidad,
-        precio_unitario: i.precio_unitario,
-      }));
-      const { error: errI } = await supabase.from('venta_items').insert(itemsPayload as any);
-      if (errI) throw new Error(errI.message);
-
-      const { error: errC } = await supabase.rpc('confirmar_venta', { p_venta_id: venta.id });
+      // RPC transaccional: venta + ítems + confirmación en una sola operación.
+      const { error: errC } = await supabase.rpc('crear_venta_completa' as any, {
+        p_cliente_id: cliente?.id ?? null,
+        p_metodo_pago: metodo,
+        p_items: items.map((i) => ({
+          producto_id: i.producto_id,
+          cantidad: i.cantidad,
+          precio_unitario: i.precio_unitario,
+        })),
+      } as any);
       if (errC) throw new Error(errC.message);
 
       router.push('/dashboard/ventas');
@@ -231,6 +218,7 @@ export function NuevaVentaClient({
           productos={productosFiltrados}
           topProductos={topProductos}
           items={items}
+          itemError={itemError}
           busqueda={busquedaProd}
           setBusqueda={setBusquedaProd}
           precioInicial={precioInicial}
@@ -398,6 +386,7 @@ function PasoProductos({
   productos,
   topProductos,
   items,
+  itemError,
   busqueda,
   setBusqueda,
   precioInicial,
@@ -410,6 +399,7 @@ function PasoProductos({
   productos: ProductoOpt[];
   topProductos: ProductoOpt[];
   items: Item[];
+  itemError: string | null;
   busqueda: string;
   setBusqueda: (v: string) => void;
   precioInicial: (p: ProductoOpt) => Promise<number>;
@@ -451,6 +441,12 @@ function PasoProductos({
               );
             })}
           </div>
+        </div>
+      )}
+
+      {itemError && (
+        <div className="rounded-md border border-destructive/40 bg-destructive/10 p-2 text-sm text-destructive">
+          {itemError}
         </div>
       )}
 
@@ -513,9 +509,12 @@ function ProductoRow({
   const [precio, setPrecio] = useState<string>(
     enCarrito ? String(enCarrito.precio_unitario) : String(precioBase),
   );
+  const [precioInicializado, setPrecioInicializado] = useState(false);
 
   async function inicializarPrecio() {
-    if (enCarrito) return;
+    // Solo una vez por fila: evita disparar el RPC en cada ciclo focus/blur.
+    if (enCarrito || precioInicializado) return;
+    setPrecioInicializado(true);
     const p = await precioInicial(producto);
     setPrecio(String(p));
   }

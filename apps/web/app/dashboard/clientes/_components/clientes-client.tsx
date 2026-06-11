@@ -19,7 +19,9 @@ type ClienteRow = {
 
 export function ClientesClient({ initialRows }: { initialRows: ClienteRow[] }) {
   const router = useRouter();
-  const [rows] = useState(initialRows);
+  // initialRows viene del server component: usarlo directo permite que
+  // router.refresh() traiga datos frescos sin estado stale.
+  const rows = initialRows;
   const [query, setQuery] = useState('');
 
   const filtered = rows.filter(

@@ -8,6 +8,8 @@ export default async function VentasPage() {
   const supabase = await createClient();
   const ctx = await getUserContext();
   const role = ctx?.role ?? 'vendedor';
+  // Últimos 30 días por defecto: evita cargar el histórico completo.
+  const desde = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
   const { data, error } = await supabase
     .from('ventas')
     .select(`
@@ -16,6 +18,7 @@ export default async function VentasPage() {
       clientes(nombre),
       profiles!ventas_vendedor_id_fkey(full_name)
     `)
+    .gte('fecha', desde)
     .order('created_at', { ascending: false })
     .limit(200);
 

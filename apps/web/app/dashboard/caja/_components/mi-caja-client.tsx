@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -30,7 +30,7 @@ export function MiCajaClient({
   fecha: string;
 }) {
   const router = useRouter();
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   const [resumen, setResumen] = useState<CajaResumen | null>(initial);
   const [montoApertura, setMontoApertura] = useState('0');
   const [montoCierre, setMontoCierre] = useState('');
@@ -172,7 +172,9 @@ export function MiCajaClient({
                   {montoCierre && (
                     <p
                       className={`mt-1 text-xs ${
-                        parseFloat(montoCierre) >= esperado ? 'text-green-600' : 'text-destructive'
+                        parseFloat(montoCierre) - esperado >= -0.005
+                          ? 'text-green-600'
+                          : 'text-destructive'
                       }`}
                     >
                       Diferencia: {formatCurrency(parseFloat(montoCierre) - esperado)}
@@ -211,7 +213,9 @@ export function MiCajaClient({
                   label="Diferencia"
                   valor={formatCurrency(Number(resumen.monto_cierre) - esperado)}
                   color={
-                    Number(resumen.monto_cierre) >= esperado ? 'text-green-600' : 'text-destructive'
+                    Number(resumen.monto_cierre) - esperado >= -0.005
+                      ? 'text-green-600'
+                      : 'text-destructive'
                   }
                 />
               </CardContent>

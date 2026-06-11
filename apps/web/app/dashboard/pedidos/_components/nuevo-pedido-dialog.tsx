@@ -91,6 +91,14 @@ export function NuevoPedidoDialog({
     if (!vendedor) return setError('Asigna un vendedor.');
     if (!fechaEntrega) return setError('Fecha de entrega requerida.');
     if (items.length === 0) return setError('Agrega al menos un producto.');
+    const sinPrecio = items.find((it) => !it.precio || it.precio <= 0);
+    if (sinPrecio) {
+      return setError(`"${sinPrecio.producto.nombre}" necesita un precio mayor a 0.`);
+    }
+    const sinCantidad = items.find((it) => !it.cantidad || it.cantidad <= 0);
+    if (sinCantidad) {
+      return setError(`"${sinCantidad.producto.nombre}" necesita una cantidad mayor a 0.`);
+    }
     setSubmitting(true);
     try {
       const {

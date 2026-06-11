@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { movimientoCreateSchema, type MovimientoCreateInput } from '@distribuapp/shared/schemas';
@@ -24,7 +24,7 @@ type Props = {
 };
 
 export function AjustarStockDialog({ productoId, productoNombre, onApplied }: Props) {
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   const [open, setOpen] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
   const {

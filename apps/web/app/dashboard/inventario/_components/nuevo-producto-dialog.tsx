@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { productoCreateSchema, type ProductoCreateInput } from '@distribuapp/shared/schemas';
@@ -19,7 +19,7 @@ import {
 import { cn } from '@/lib/utils';
 
 export function NuevoProductoDialog({ onCreated }: { onCreated: () => void }) {
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   const [open, setOpen] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
   const {

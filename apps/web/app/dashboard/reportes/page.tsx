@@ -23,7 +23,7 @@ export default async function ReportesPage() {
       .order('fecha', { ascending: false }),
     supabase.from('reporte_productos_top').select('*').limit(10),
     supabase.from('reporte_clientes_top').select('*').limit(10),
-    supabase.from('reporte_inventario_critico').select('*'),
+    supabase.from('reporte_inventario_critico').select('*').limit(50),
     supabase.from('reporte_cobranza_resumen').select('*'),
   ]);
 

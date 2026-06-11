@@ -1,10 +1,13 @@
 import { createClient } from '@/lib/supabase/server';
+import { getUserContext } from '@/lib/auth/role';
 import { CobranzaClient } from './_components/cobranza-client';
 
 export const dynamic = 'force-dynamic';
 
 export default async function CobranzaPage() {
   const supabase = await createClient();
+  const ctx = await getUserContext();
+  const role = ctx?.role ?? 'vendedor';
   const { data, error } = await supabase
     .from('creditos')
     .select(`
@@ -24,5 +27,5 @@ export default async function CobranzaPage() {
     );
   }
 
-  return <CobranzaClient initialRows={data ?? []} />;
+  return <CobranzaClient initialRows={data ?? []} role={role} />;
 }
